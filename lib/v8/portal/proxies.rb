@@ -101,6 +101,18 @@ module V8
       def empty?
         js_empty? && rb_empty?
       end
+
+      def destroy
+        for proxy, target in @js_proxies_js2rb
+         proxy.Dispose()
+        end
+        for proxy, proxy_id in @rb_proxies_js2rb
+          proxy.Dispose()
+        end
+        for list in [@js_proxies_rb2js,@js_proxies_js2rb, @rb_proxies_rb2js,@rb_proxies_js2rb]
+          list.clear
+        end
+      end
       DoubleProxyError = Class.new(StandardError)
 
       class ClearJSProxy
@@ -110,9 +122,10 @@ module V8
         end
 
         def call(proxy, parameter)
-          rb = @js2rb[proxy]
-          @js2rb.delete(proxy)
-          @rb2js.delete(rb)
+          if rb = @js2rb[proxy]
+            @js2rb.delete(proxy)
+            @rb2js.delete(rb)
+          end
         end
       end
 
@@ -124,7 +137,7 @@ module V8
       # native JavaScript object.
       #
       # It is important to do this as soon as is reasonably possible
-      # so that the native JavaScript object can itself be garbage 
+      # so that the native JavaScript object can itself be garbage
       # collected (provided there are no other references to it)
       class ClearRubyProxy
         def initialize(rb2js, js2rb)

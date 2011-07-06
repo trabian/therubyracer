@@ -3,6 +3,8 @@ module V8
   class Portal
     attr_reader :context, :access, :proxies, :templates, :interceptors, :caller
 
+    ClosedError = Class.new(StandardError)
+
     def initialize(context, access)
       @context, @access = context, access
       @proxies = Proxies.new
@@ -23,6 +25,16 @@ module V8
         @context.native.enter do
           yield(self)
         end if block_given?
+      end
+    end
+
+    def destroy
+      @proxies.destroy
+      def self.open
+        raise ClosedError, "invalid attempt to access a Context which has already been destroyed"
+      end
+      def self.lock
+        raise ClosedError, "invalid attempt to access a Context which has already been destroyed"
       end
     end
 

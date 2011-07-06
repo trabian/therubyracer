@@ -31,15 +31,25 @@ v8_handle::Payload::Payload(Handle<void> object) {
   rb_gc_register_address(&wrapper);
   handle = Persistent<void>::New(object);
   wrapper = Data_Wrap_Struct(rb_cObject, 0, destroy, this);
+  this->isReleased = false;
 }
 
 v8_handle::Payload::~Payload() {
   rb_gc_unregister_address(&wrapper);
 }
 
+/**
+* Release the V8 reference underlying this handle.
+*
+* Do not do so if it has already been released before. This allows for explicit
+* destruction of handles.
+*/
 void v8_handle::Payload::release() {
-  handle.Dispose();
-  handle.Clear();
+  if (!this->isReleased) {
+    handle.Dispose();
+    handle.Clear();
+    this->isReleased = true;
+  }
 }
 
 void v8_handle::Payload::destroy(v8_handle::Payload* payload) {
@@ -109,7 +119,7 @@ namespace {
   }
 
   VALUE Dispose(VALUE self) {
-    rr_v8_handle<void>(self).Dispose();
+    rr_v8_handle_raw(self)->payload->release();
     return Qnil;
   }
 

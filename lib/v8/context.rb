@@ -2,16 +2,16 @@ require 'stringio'
 
 module V8
   class Context
-    attr_reader :native, :scope, :access
+    attr_reader :native, :scope, :access, :portal
 
     def initialize(opts = {})
       @access = Access.new
-      @to = Portal.new(self, @access)
-      @to.lock do
+      @to = @portal = Portal.new(self, @access)
+      @portal.lock do
         with = opts[:with]
         constructor = nil
         template = if with
-          constructor = @to.templates.to_constructor(with.class)
+          constructor = @portal.templates.to_constructor(with.class)
           constructor.disable()
           constructor.template.InstanceTemplate()
         else
@@ -20,13 +20,24 @@ module V8
         @native = opts[:with] ? C::Context::New(template) : C::Context::New()
         @native.enter do
           @global = @native.Global()
-          @to.proxies.register_javascript_proxy @global, :for => with if with
+          @portal.proxies.register_javascript_proxy @global, :for => with if with
           constructor.enable() if constructor
-          @scope = @to.rb(@global)
+          @scope = @portal.rb(@global)
           @global.SetHiddenValue(C::String::NewSymbol("TheRubyRacer::RubyContext"), C::External::New(self))
         end
         yield(self) if block_given?
       end
+    end
+
+    ##
+    # Destroy this context and all the objects that it contains. You noramlly
+    # will not need this.
+    #
+    # WARNING: This is an interim measure until a more complete solution can
+    # be found for the challenges of managing garbage collection between Ruby
+    # and V8
+    def destroy
+      @portal.destroy
     end
 
     def eval(javascript, filename = "<eval>", line = 1)

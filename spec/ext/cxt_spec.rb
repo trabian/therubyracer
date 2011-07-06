@@ -54,4 +54,26 @@ JS
   it "has an empty stack if there is no enterned context" do
     V8::Context.stack.should be_empty
   end
+
+  describe "a destroyed context" do
+    before do
+      @cxt = V8::Context.new
+      @cxt['foo'] = Object.new
+      @bar = @cxt.eval('(function() {})')
+      @cxt.destroy
+    end
+    it "should release all proxies" do
+      @cxt.portal.proxies.should be_empty
+    end
+    it "shouldn't be useable for evaluation'" do
+      expect {@cxt.eval('1')}.should raise_error(V8::Portal::ClosedError)
+    end
+    it "shouldn't be useable for variable retrieval or setting" do
+      expect {@cxt['foo']}.should raise_error(V8::Portal::ClosedError)
+    end
+    it "invalidates JS objects that came from it" do
+      expect {@bar.to_s}.should raise_error(V8::Portal::ClosedError)
+      expect {@bar.call()}.should raise_error(V8::Portal::ClosedError)
+    end
+  end
 end
