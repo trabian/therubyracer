@@ -29,12 +29,14 @@ module V8
     end
 
     def destroy
-      @proxies.destroy
-      def self.open
-        raise ClosedError, "invalid attempt to access a Context which has already been destroyed"
-      end
-      def self.lock
-        raise ClosedError, "invalid attempt to access a Context which has already been destroyed"
+      open do
+        @proxies.destroy
+        def self.open
+          raise ClosedError, "invalid attempt to access a Context which has already been destroyed"
+        end
+        def self.lock
+          raise ClosedError, "invalid attempt to access a Context which has already been destroyed"
+        end
       end
     end
 
